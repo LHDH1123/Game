@@ -3,7 +3,6 @@ import "../styles/NumberGame.css";
 
 export function NumberGame() {
   const [points, setPoints] = useState(5);
-  const [startTime, setStartTime] = useState(null);
   const [elapsed, setElapsed] = useState(0);
   const [count, setCount] = useState(1);
   const [circles, setCircles] = useState([]);
@@ -13,6 +12,7 @@ export function NumberGame() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [wrongClickId, setWrongClickId] = useState(null);
   const [disappearing, setDisappearing] = useState({});
+  const [isAutoPlay, setIsAutoPlay] = useState(false);
 
   const timerRef = useRef(null);
   const countdownIntervals = useRef({});
@@ -32,14 +32,12 @@ export function NumberGame() {
   const restart = () => {
     if (points <= 0) return;
 
-    // 🧹 Dọn sạch interval và trạng thái
     clearInterval(timerRef.current);
     Object.values(countdownIntervals.current).forEach(clearInterval);
     countdownIntervals.current = {};
     setDisappearing({});
     setCircles([]);
 
-    // 🔄 Reset trạng thái game
     setIsPlay(true);
     setCount(1);
     setIsReset(true);
@@ -47,6 +45,7 @@ export function NumberGame() {
     setIsGameOver(false);
     setWrongClickId(null);
     setElapsed(0);
+    setIsAutoPlay(false);
 
     generateCircles();
 
@@ -72,7 +71,6 @@ export function NumberGame() {
 
   useEffect(() => {
     if (isGameOver) {
-      // Không xoá disappearing -> giữ countdown lúc dừng
       Object.values(countdownIntervals.current).forEach(clearInterval);
       countdownIntervals.current = {};
     }
@@ -94,19 +92,20 @@ export function NumberGame() {
     setDisappearing((prev) => ({ ...prev, [id]: timeLeft.toFixed(1) }));
 
     const interval = setInterval(() => {
-      // ❗ Nếu game over, dừng mọi xử lý countdown
-      if (isGameOver) return;
-
       timeLeft -= 0.1;
+
       if (timeLeft <= 0) {
         clearInterval(interval);
-        setCircles((prev) => prev.filter((c) => c.id !== id));
-        setDisappearing((prev) => {
-          const copy = { ...prev };
-          delete copy[id];
-          return copy;
-        });
         delete countdownIntervals.current[id];
+
+        if (!isGameOver) {
+          setCircles((prev) => prev.filter((c) => c.id !== id));
+          setDisappearing((prev) => {
+            const copy = { ...prev };
+            delete copy[id];
+            return copy;
+          });
+        }
       } else {
         setDisappearing((prev) => ({ ...prev, [id]: timeLeft.toFixed(1) }));
       }
@@ -115,6 +114,27 @@ export function NumberGame() {
     countdownIntervals.current[id] = interval;
     setCount((prev) => prev + 1);
   };
+
+  const toggleAutoPlay = () => {
+    setIsAutoPlay((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (!isAutoPlay || isGameOver || isDone || !isPlay) return;
+
+    const autoInterval = setInterval(() => {
+      const nextCircle = circles.find((c) => c.id === count);
+      if (nextCircle) {
+        handleClick(nextCircle.id);
+      }
+
+      if (count > points || isGameOver || isDone) {
+        clearInterval(autoInterval);
+      }
+    }, 700);
+
+    return () => clearInterval(autoInterval);
+  }, [isAutoPlay, count, circles, isGameOver, isDone, isPlay]);
 
   return (
     <div className="game-container">
@@ -126,24 +146,32 @@ export function NumberGame() {
         {isGameOver ? "GAME OVER" : isDone ? "ALL CLEARED" : "LET'S PLAY"}
       </h3>
 
-      <p>
-        Points:{" "}
-        <input
-          min="1"
-          type="number"
-          value={points}
-          onChange={(e) => setPoints(Number(e.target.value))}
-        />
-      </p>
-      <p>Time: {elapsed}s</p>
+      <div className="info-bar">
+        <div className="info-item">
+          <label>Points:</label>
+          <input
+            min="1"
+            value={points}
+            onChange={(e) => setPoints(Number(e.target.value))}
+          />
+        </div>
+        <div className="info-item">
+          <label>Time:</label>
+          <span>{elapsed}s</span>
+        </div>
+      </div>
 
       <button className="btn-restart" onClick={restart}>
         {isReset ? "Restart" : "Play"}
       </button>
 
-      {isPlay && !isGameOver && (
-        <button className="btn-restart" style={{ marginLeft: "10px" }}>
-          Auto Play On
+      {isPlay && !isGameOver && !isDone && (
+        <button
+          className="btn-restart"
+          style={{ marginLeft: "10px" }}
+          onClick={toggleAutoPlay}
+        >
+          Auto Play {isAutoPlay ? "OFF" : "ON"}
         </button>
       )}
 
@@ -151,13 +179,16 @@ export function NumberGame() {
         {circles.map((c) => (
           <div
             key={c.id}
-            className={`circle ${
-              disappearing[c.id] && !isGameOver ? "disappearing" : ""
-            } ${wrongClickId === c.id ? "wrong-click" : ""}`}
+            className={`circle ${disappearing[c.id] ? "disappearing" : ""} ${
+              wrongClickId === c.id ? "wrong-click" : ""
+            }`}
             style={{
               top: `${c.top}%`,
               left: `${c.left}%`,
               zIndex: 1000 - c.id,
+              opacity: disappearing[c.id]
+                ? Math.max(0.1, disappearing[c.id] / 3)
+                : 1, // 👈 Tính độ mờ dựa vào thời gian còn lại
             }}
             onClick={() => handleClick(c.id)}
           >

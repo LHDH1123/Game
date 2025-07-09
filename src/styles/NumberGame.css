@@ -1,13 +1,15 @@
 .game-container {
   width: 400px;
+  height: 600px;
   padding: 16px;
   border: 2px solid #000;
   font-family: sans-serif;
 }
 
 input {
-  width: 50px;
-  text-align: center;
+  margin-left: -10px;
+  width: 100px;
+  text-align: left;
 }
 
 .btn-restart {
@@ -16,7 +18,7 @@ input {
   cursor: pointer;
   background-color: #d0d3d7;
   color: black;
-  border: none;
+  border: 1px solid #000;
   border-radius: 5px;
 }
 
@@ -53,12 +55,12 @@ input {
 
 .circle.disappearing {
   background-color: #f44336;
-  animation: fadeOut 3s linear forwards;
+  /* animation: fadeOut 3s linear forwards; */
 }
 
 .circle.wrong-click {
   background-color: #f44336;
-  animation: none; /* không biến mất */
+  animation: none;
 }
 
 @keyframes fadeOut {
@@ -67,7 +69,7 @@ input {
     transform: scale(1);
   }
   100% {
-    opacity: 0;
+    opacity: 0.1; /* mờ dần nhưng không biến mất hẳn */
   }
 }
 
@@ -92,4 +94,15 @@ input {
   color: red;
   font-weight: bold;
   font-size: 20px;
+}
+
+.info-bar {
+  align-items: center;
+  margin: 8px 0;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 50px;
 }
